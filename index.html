@@ -55,9 +55,9 @@
       box-shadow: 0 2px 4px rgba(0,123,255,0.3);
     }
     button.small-btn { width: auto; padding: 10px 15px; margin-top: 0; }
+    button.edit-btn { background: #6c757d; margin-left: 5px; }
     button.danger { background: var(--danger); box-shadow: none; }
     
-    /* עיצוב כפתור ייצוא עדין ונקי */
     .export-btn {
       background: #f8fbff;
       color: var(--primary);
@@ -127,7 +127,7 @@
 <body>
 
   <div id="addSection" class="section active card">
-    <h2>הוספה</h2>
+    <h2 id="formTitle">הוספה</h2>
     <label>בחר עובד:</label>
     <select id="empSelect"></select>
     
@@ -145,7 +145,8 @@
       </div>
     </div>
     
-    <button onclick="saveEntry()">שמור נתונים</button>
+    <button id="submitBtn" onclick="saveEntry()">שמור נתונים</button>
+    <button id="cancelEditBtn" style="display:none; background:#6c757d; margin-top:10px;" onclick="resetForm()">ביטול עריכה</button>
   </div>
 
   <div id="listSection" class="section card">
@@ -177,17 +178,20 @@
   <div class="credit">פותח על ידי דוד אורן</div>
 
   <div class="nav-bar">
-    <div class="nav-item active" onclick="switchTab('addSection')">הוספה</div>
-    <div class="nav-item" onclick="switchTab('listSection')">יומן שעות</div>
-    <div class="nav-item" onclick="switchTab('empSection')">עובדים</div>
+    <div class="nav-item active" id="navAdd" onclick="switchTab('addSection')">הוספה</div>
+    <div class="nav-item" id="navList" onclick="switchTab('listSection')">יומן שעות</div>
+    <div class="nav-item" id="navEmp" onclick="switchTab('empSection')">עובדים</div>
   </div>
 
   <script>
     let employees = JSON.parse(localStorage.getItem('employees')) || [];
     let entries = JSON.parse(localStorage.getItem('entries')) || [];
+    let editingId = null;
 
     function init() {
-      document.getElementById('dateInput').valueAsDate = new Date();
+      if (!editingId) {
+        document.getElementById('dateInput').valueAsDate = new Date();
+      }
       updateDropdowns();
       updateMonthFilter();
       renderEmployees();
@@ -195,10 +199,20 @@
     }
 
     function switchTab(sectionId) {
+      if (sectionId !== 'addSection' && editingId) {
+        if (!confirm('תהליך העריכה יופסק. להמשיך?')) return;
+        resetForm();
+      }
+      
       document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      
       document.getElementById(sectionId).classList.add('active');
-      event.currentTarget.classList.add('active');
+      
+      // התאמת האקטיבציה בתפריט התחתון
+      if (sectionId === 'addSection') document.getElementById('navAdd').classList.add('active');
+      if (sectionId === 'listSection') document.getElementById('navList').classList.add('active');
+      if (sectionId === 'empSection') document.getElementById('navEmp').classList.add('active');
     }
 
     function addEmployee() {
@@ -235,12 +249,17 @@
     function updateDropdowns() {
       const select = document.getElementById('empSelect');
       const filter = document.getElementById('filterEmp');
+      const currentVal = select.value;
+      
       select.innerHTML = '<option value="" disabled selected>בחר עובד...</option>';
       filter.innerHTML = '<option value="">כל העובדים</option>';
+      
       employees.forEach(emp => {
         select.innerHTML += `<option value="${emp}">${emp}</option>`;
         filter.innerHTML += `<option value="${emp}">${emp}</option>`;
       });
+      
+      if (currentVal) select.value = currentVal;
     }
 
     function saveEntry() {
@@ -251,24 +270,62 @@
       
       if(!emp || !date) return alert('חובה לבחור עובד ותאריך.');
       
-      entries.push({ id: Date.now(), emp, date, start, end });
-      localStorage.setItem('entries', JSON.stringify(entries));
+      if (editingId) {
+        const index = entries.findIndex(e => e.id === editingId);
+        entries[index] = { ...entries[index], emp, date, start, end };
+        alert('הרשומה עודכנה!');
+      } else {
+        entries.push({ id: Date.now(), emp, date, start, end });
+        alert('השעות נשמרו בהצלחה!');
+      }
       
-      alert('השעות נשמרו בהצלחה!');
-      document.getElementById('startInput').value = '';
-      document.getElementById('endInput').value = '';
+      localStorage.setItem('entries', JSON.stringify(entries));
+      resetForm();
       init();
+      switchTab('listSection');
+    }
+
+    function editEntry(id) {
+      const entry = entries.find(e => e.id === id);
+      if (!entry) return;
+
+      editingId = id;
+      document.getElementById('formTitle').innerText = 'עריכה';
+      document.getElementById('submitBtn').innerText = 'עדכן נתונים';
+      document.getElementById('cancelEditBtn').style.display = 'block';
+
+      document.getElementById('empSelect').value = entry.emp;
+      document.getElementById('dateInput').value = entry.date;
+      document.getElementById('startInput').value = entry.start;
+      document.getElementById('endInput').value = entry.end;
+
+      switchTab('addSection');
+    }
+
+    function resetForm() {
+      editingId = null;
+      document.getElementById('formTitle').innerText = 'הוספה';
+      document.getElementById('submitBtn').innerText = 'שמור נתונים';
+      document.getElementById('cancelEditBtn').style.display = 'none';
+      
+      document.getElementById('empSelect').value = "";
+      document.getElementById('dateInput').valueAsDate = new Date();
+      document.getElementById('startInput').value = "";
+      document.getElementById('endInput').value = "";
     }
 
     function updateMonthFilter() {
       const filter = document.getElementById('filterMonth');
+      const currentVal = filter.value;
       const months = [...new Set(entries.map(e => e.date.substring(0,7)))].sort().reverse();
+      
       filter.innerHTML = '<option value="">כל החודשים</option>';
       months.forEach(m => {
         const dateObj = new Date(m + '-01');
         const monthName = dateObj.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
         filter.innerHTML += `<option value="${m}">${monthName}</option>`;
       });
+      filter.value = currentVal;
     }
 
     function getFilteredEntries() {
@@ -300,7 +357,10 @@
                 כניסה: ${e.start || '--:--'} &nbsp;|&nbsp; יציאה: ${e.end || '--:--'}
               </div>
             </div>
-            <button class="small-btn danger" onclick="deleteEntry(${e.id})">מחק</button>
+            <div style="display:flex;">
+              <button class="small-btn edit-btn" onclick="editEntry(${e.id})">ערוך</button>
+              <button class="small-btn danger" onclick="deleteEntry(${e.id})">מחק</button>
+            </div>
           </div>
         `;
       });
