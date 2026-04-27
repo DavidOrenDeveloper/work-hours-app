@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ניהול שעות עובדים</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ffffff">
+  <style>
+    :root {
+      --primary: #007bff;
+      --danger: #dc3545;
+      --bg: #f4f6f9;
+      --card-bg: #ffffff;
+      --text: #333333;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 15px;
+      padding-bottom: 80px; /* Space for bottom nav */
+    }
+    h2 { margin-top: 0; font-size: 1.2rem; color: #555; }
+    .card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+    label { font-size: 0.9rem; color: #666; font-weight: bold; display: block; margin-top: 15px; }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      margin-top: 5px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      box-sizing: border-box;
+      font-size: 16px;
+      background-color: #fafafa;
+    }
+    button {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 8px;
+      margin-top: 20px;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+    }
+    button.small-btn { width: auto; padding: 10px 15px; margin-top: 0; }
+    button.danger { background: var(--danger); box-shadow: none; }
+    
+    /* Bottom Navigation */
+    .nav-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      display: flex;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+      z-index: 1000;
+    }
+    .nav-item {
+      flex: 1;
+      text-align: center;
+      padding: 15px 0;
+      font-size: 14px;
+      font-weight: bold;
+      color: #888;
+      cursor: pointer;
+      border-top: 3px solid transparent;
+    }
+    .nav-item.active {
+      color: var(--primary);
+      border-top: 3px solid var(--primary);
+      background: #f8fbff;
+    }
+    .section { display: none; animation: fadeIn 0.3s; }
+    .section.active { display: block; }
+    
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    
+    .list-item {
+      border-bottom: 1px solid #eee;
+      padding: 15px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .list-item:last-child { border-bottom: none; }
+    .item-details { flex: 1; }
+    .item-date { font-weight: bold; color: var(--primary); margin-bottom: 5px; }
+  </style>
+</head>
+<body>
+
+  <div id="addSection" class="section active card">
+    <h2>הוספה</h2>
+    <label>בחר עובד:</label>
+    <select id="empSelect"></select>
+    
+    <label>תאריך:</label>
+    <input type="date" id="dateInput">
+    
+    <div style="display: flex; gap: 10px;">
+      <div style="flex:1;">
+        <label>שעת כניסה:</label>
+        <input type="time" id="startInput">
+      </div>
+      <div style="flex:1;">
+        <label>שעת יציאה:</label>
+        <input type="time" id="endInput">
+      </div>
+    </div>
+    
+    <button onclick="saveEntry()">שמור נתונים</button>
+  </div>
+
+  <div id="listSection" class="section card">
+    <h2>יומן שעות (סינונים)</h2>
+    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+      <select id="filterMonth" onchange="renderEntries()"></select>
+      <select id="filterEmp" onchange="renderEntries()"></select>
+    </div>
+    <div id="entriesList"></div>
+  </div>
+
+  <div id="empSection" class="section card">
+    <h2>ניהול עובדים</h2>
+    <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 20px;">
+      <div style="flex: 1;">
+        <label>שם עובד חדש:</label>
+        <input type="text" id="newEmpName" placeholder="הכנס שם...">
+      </div>
+      <button class="small-btn" onclick="addEmployee()">הוסף</button>
+    </div>
+    <div id="empList"></div>
+  </div>
+
+  <div class="nav-bar">
+    <div class="nav-item active" onclick="switchTab('addSection')">הוספה</div>
+    <div class="nav-item" onclick="switchTab('listSection')">יומן שעות</div>
+    <div class="nav-item" onclick="switchTab('empSection')">עובדים</div>
+  </div>
+
+  <script>
+    // הגדרת מסד הנתונים המקומי (LocalStorage)
+    let employees = JSON.parse(localStorage.getItem('employees')) || [];
+    let entries = JSON.parse(localStorage.getItem('entries')) || [];
+
+    // הפעלה ראשונית
+    function init() {
+      document.getElementById('dateInput').valueAsDate = new Date();
+      updateDropdowns();
+      updateMonthFilter();
+      renderEmployees();
+      renderEntries();
+    }
+
+    // ניווט בין המסכים
+    function switchTab(sectionId) {
+      document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      
+      document.getElementById(sectionId).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+
+    // --- ניהול עובדים ---
+    function addEmployee() {
+      const name = document.getElementById('newEmpName').value.trim();
+      if(name && !employees.includes(name)) {
+        employees.push(name);
+        localStorage.setItem('employees', JSON.stringify(employees));
+        document.getElementById('newEmpName').value = '';
+        init();
+      }
+    }
+
+    function removeEmployee(name) {
+      if(confirm(`האם אתה בטוח שברצונך להסיר את ${name}?`)) {
+        employees = employees.filter(e => e !== name);
+        localStorage.setItem('employees', JSON.stringify(employees));
+        init();
+      }
+    }
+
+    function renderEmployees() {
+      const list = document.getElementById('empList');
+      list.innerHTML = '';
+      employees.forEach(emp => {
+        list.innerHTML += `
+          <div class="list-item">
+            <div class="item-details">${emp}</div>
+            <button class="small-btn danger" onclick="removeEmployee('${emp}')">הסר</button>
+          </div>
+        `;
+      });
+    }
+
+    function updateDropdowns() {
+      const select = document.getElementById('empSelect');
+      const filter = document.getElementById('filterEmp');
+      select.innerHTML = '<option value="" disabled selected>בחר עובד...</option>';
+      filter.innerHTML = '<option value="">כל העובדים</option>';
+      
+      employees.forEach(emp => {
+        select.innerHTML += `<option value="${emp}">${emp}</option>`;
+        filter.innerHTML += `<option value="${emp}">${emp}</option>`;
+      });
+    }
+
+    // --- ניהול שעות ---
+    function saveEntry() {
+      const emp = document.getElementById('empSelect').value;
+      const date = document.getElementById('dateInput').value;
+      const start = document.getElementById('startInput').value;
+      const end = document.getElementById('endInput').value;
+      
+      if(!emp || !date) return alert('חובה לבחור עובד ותאריך.');
+      
+      entries.push({ id: Date.now(), emp, date, start, end });
+      localStorage.setItem('entries', JSON.stringify(entries));
+      
+      alert('השעות נשמרו בהצלחה!');
+      document.getElementById('startInput').value = '';
+      document.getElementById('endInput').value = '';
+      init();
+    }
+
+    function updateMonthFilter() {
+      const filter = document.getElementById('filterMonth');
+      // יצירת רשימה ייחודית של חודשים (בפורמט YYYY-MM)
+      const months = [...new Set(entries.map(e => e.date.substring(0,7)))].sort().reverse();
+      
+      filter.innerHTML = '<option value="">כל החודשים</option>';
+      months.forEach(m => {
+        // המרת תצוגת חודש (לדוגמה: 2026-04 -> אפריל 2026)
+        const dateObj = new Date(m + '-01');
+        const monthName = dateObj.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+        filter.innerHTML += `<option value="${m}">${monthName}</option>`;
+      });
+    }
+
+    function renderEntries() {
+      const list = document.getElementById('entriesList');
+      const fMonth = document.getElementById('filterMonth').value;
+      const fEmp = document.getElementById('filterEmp').value;
+      
+      list.innerHTML = '';
+      
+      // סינון לפי החודש והעובד שנבחרו
+      const filtered = entries.filter(e => 
+        (!fMonth || e.date.startsWith(fMonth)) && 
+        (!fEmp || e.emp === fEmp)
+      ).sort((a,b) => new Date(b.date) - new Date(a.date)); // מיון מהחדש לישן
+
+      if(filtered.length === 0) {
+        list.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">אין נתונים להצגה.</div>';
+        return;
+      }
+
+      filtered.forEach(e => {
+        // המרת תאריך לפורמט ישראלי
+        const displayDate = e.date.split('-').reverse().join('/');
+        list.innerHTML += `
+          <div class="list-item">
+            <div class="item-details">
+              <div class="item-date">${displayDate} | ${e.emp}</div>
+              <div style="font-size: 0.9rem; color: #555;">
+                כניסה: ${e.start || '--:--'} &nbsp;|&nbsp; יציאה: ${e.end || '--:--'}
+              </div>
+            </div>
+            <button class="small-btn danger" onclick="deleteEntry(${e.id})">מחק</button>
+          </div>
+        `;
+      });
+    }
+
+    function deleteEntry(id) {
+      if(confirm('למחוק רשומה זו?')) {
+        entries = entries.filter(e => e.id !== id);
+        localStorage.setItem('entries', JSON.stringify(entries));
+        init();
+      }
+    }
+
+    // הפעלת Service Worker בשביל ה-PWA (שיעבוד אופליין)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+
+    init();
+  </script>
+</body>
+</html>

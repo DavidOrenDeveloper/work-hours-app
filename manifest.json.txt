@@ -1,0 +1,17 @@
+{
+  "name": "ניהול שעות עובדים",
+  "short_name": "שעות",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f6f9",
+  "theme_color": "#ffffff",
+  "dir": "rtl",
+  "lang": "he",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3652/3652191.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
