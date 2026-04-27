@@ -54,9 +54,19 @@
       cursor: pointer;
       box-shadow: 0 2px 4px rgba(0,123,255,0.3);
     }
-    button.small-btn { width: auto; padding: 10px 15px; margin-top: 0; }
-    button.edit-btn { background: #6c757d; margin-left: 5px; }
-    button.danger { background: var(--danger); box-shadow: none; }
+    
+    /* העיצוב החדש והמעודן לכפתורים הקטנים ברשימה */
+    button.small-btn { 
+      width: auto; 
+      padding: 7px 12px; 
+      margin-top: 0; 
+      font-size: 13px; 
+      font-weight: 500;
+      border-radius: 6px;
+      box-shadow: none;
+    }
+    button.edit-btn { background: #6c757d; }
+    button.danger { background: var(--danger); }
     
     .export-btn {
       background: #f8fbff;
@@ -209,7 +219,6 @@
       
       document.getElementById(sectionId).classList.add('active');
       
-      // התאמת האקטיבציה בתפריט התחתון
       if (sectionId === 'addSection') document.getElementById('navAdd').classList.add('active');
       if (sectionId === 'listSection') document.getElementById('navList').classList.add('active');
       if (sectionId === 'empSection') document.getElementById('navEmp').classList.add('active');
@@ -357,7 +366,7 @@
                 כניסה: ${e.start || '--:--'} &nbsp;|&nbsp; יציאה: ${e.end || '--:--'}
               </div>
             </div>
-            <div style="display:flex;">
+            <div style="display:flex; gap: 8px; align-items: center;">
               <button class="small-btn edit-btn" onclick="editEntry(${e.id})">ערוך</button>
               <button class="small-btn danger" onclick="deleteEntry(${e.id})">מחק</button>
             </div>
