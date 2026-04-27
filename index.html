@@ -10,7 +10,6 @@
     :root {
       --primary: #007bff;
       --danger: #dc3545;
-      --success: #28a745;
       --bg: #f4f6f9;
       --card-bg: #ffffff;
       --text: #333333;
@@ -57,7 +56,6 @@
     }
     button.small-btn { width: auto; padding: 10px 15px; margin-top: 0; }
     button.danger { background: var(--danger); box-shadow: none; }
-    button.success { background: var(--success); box-shadow: none; margin-top: 0;}
     
     .nav-bar {
       position: fixed;
@@ -107,6 +105,30 @@
       margin-top: 30px;
       padding-bottom: 20px;
     }
+
+    /* עיצוב חדש לכפתור ייצוא */
+    .export-btn {
+      background: transparent;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: normal;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: none;
+      margin-top: 0;
+      width: auto;
+    }
+    .export-btn:hover {
+      background: #f0f7ff;
+    }
+    .export-icon {
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
@@ -136,7 +158,9 @@
   <div id="listSection" class="section card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
       <h2 style="margin: 0;">יומן שעות</h2>
-      <button class="small-btn success" onclick="exportToCSV()">ייצא לאקסל</button>
+      <button class="export-btn" onclick="exportToCSV()">
+        <span class="export-icon">⬇️</span> ייצוא ל-Excel
+      </button>
     </div>
     
     <div style="display: flex; gap: 10px; margin-bottom: 15px;">
@@ -298,7 +322,6 @@
       }
     }
 
-    // פונקציית ייצוא לאקסל (CSV)
     function exportToCSV() {
       const filtered = getFilteredEntries();
       if(filtered.length === 0) {
@@ -306,18 +329,15 @@
         return;
       }
 
-      // יצירת כותרות הקובץ
-      let csvContent = '\uFEFF'; // BOM לתמיכה בעברית באקסל
+      let csvContent = '\uFEFF'; 
       csvContent += "תאריך,שם עובד,שעת כניסה,שעת יציאה\n";
 
-      // הוספת הנתונים
       filtered.forEach(e => {
         const displayDate = e.date.split('-').reverse().join('/');
         const row = `"${displayDate}","${e.emp}","${e.start || ''}","${e.end || ''}"`;
         csvContent += row + "\n";
       });
 
-      // יצירת הקובץ והורדה
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
